@@ -1,0 +1,1064 @@
+---
+title: "Bulk_barcode_plots"
+output: html_document
+date: "2025-08-19"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Install pacakges
+```{r}
+# install.packages("devtools")
+devtools::install_github("vqf/nVennR")
+install.packages("ggimage")
+install.packages("fuzzyjoin")
+install.packages("pheatmap")
+install.packages("ggdendro")
+install.packages("tidyverse")
+install.packages("umap")
+install.packages("scatterpie")
+install.packages("randomcoloR")
+```
+
+
+#Load packages
+```{r}
+
+library(ggplot2)
+library(pheatmap)
+library(Rtsne)
+library(grid)
+library(reshape2)
+library(ggdendro)
+library(ggbeeswarm)
+library(dplyr)
+library(gridExtra)
+library(gplots)
+library(tidyverse)
+library(viridis)
+library(scater)
+library(umap)
+library(RColorBrewer)
+library(viridis) 
+library(VennDiagram)
+library(usethis)
+library(devtools)
+library(ggvenn)
+library(wesanderson)
+library(psych)
+library(tidyverse)
+library(ggpubr)
+library(rstatix)
+library(ggplot2)
+library(metR)
+library(GGally)
+library(veccompare)
+library(scales)
+library(nVennR)
+library(ggimage)
+library(scatterpie)
+library(stringi)
+library(htmlwidgets)
+library(randomcoloR)
+```
+
+```{r}
+bias_col = c("1"="#2D004B", "2"="#8073AC", "3"="#D8DAEB", "4"="#FFFFBF", "5"="#FDD0A2", "6"="#FD8D3C", "7"= "#F16913", "8"= "#D94801")
+Group_col = c("2"="#A6CEE3","V"="#1F78B4",
+              "P"="#B2DF8A", "1"="#33A02C",
+              "U"="#FB9A99", "T"="#E31A1C")
+              
+Week_col = c(D7="#C2BC80", D10="#9B8357", D14="#865640", D17="#BD582C", D21="#E48312")
+plate_col= c(PA= "red", PB= "blue")
+cluster_colour <- c("1"= "#1F77B4FF", "2"= '#AEC7E8FF', "3"= '#FF7F0EFF', "4"= '#FFBB78FF', "5"= '#2CA02CFF', "6"= '#98DF8AFF', "7"= '#D62728FF', "8"= '#FF9896FF', "9"= '#9467BDFF', "10"= '#C5B0D5FF', "11"= '#8C564BFF', "12"= '#C49C94FF', "13"= '#E377C2FF', "14"= '#F7B6D2FF', "15"= '#7F7F7FFF', "16"= '#C7C7C7FF', "17"= '#BCBD22FF', "18"= '#DBDB8DFF', "19"= '#17BECFFF' )
+
+cluster_colour_seurat <- c("primitive-RBC"= "#1F77B4FF", "Ery"= '#AEC7E8FF', "Mk"= '#FF7F0EFF', "HSC"= '#FFBB78FF', "basophil-mast_progenitor"= '#2CA02CFF', "early_lymphoid_progenitor"= '#BCBD22FF', "pre-cDC"= '#D62728FF', "CDP"= '#FF9896FF', "CMP-GMP"= '#9467BDFF', "Mk-ery_prog"= '#8C564BFF', "CD14+Monocyte"= '#E377C2FF')
+
+pop_col <- c(cDC1= "#1B9E77", cDC2=  "#D95F02", pDC= "#7570B3", Mye= "#E7298A", Mast= "#66A61E", Ery= "#E6AB02", Lymph=  "#A6761D", Rest= "#666666")
+  
+```
+
+```{r}
+THEME1=theme(text = element_text(size = 20, colour = "black"), 
+             plot.title = element_text(size = 11, face = "bold"),
+             axis.text.x = element_text(angle = 45, hjust = 1, colour = "black"), 
+             axis.text.y = element_text(colour = "black"), 
+             axis.line = element_line(colour = "black"),
+             panel.background = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+             strip.background = element_blank(),
+             legend.position = "none"
+            )
+
+THEME2=theme(text = element_text(size = 20, colour = "black"), 
+             plot.title = element_text(size = 11, face = "bold"),
+             axis.text.x = element_text(angle = 45, hjust = 1, colour = "black"), 
+             axis.text.y = element_text(colour = "black"), 
+             axis.line = element_line(colour = "black"),
+             panel.background = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+             strip.background = element_blank(),
+             legend.position = "right",
+            )
+
+THEME3= theme(text = element_text(size = 20, colour = "black"), 
+             plot.title = element_text(size = 11, face = "bold"),
+             axis.text.x = element_text(angle = 45, hjust = 1, colour = "black"), 
+             axis.text.y = element_blank(), 
+             axis.line = element_line(colour = "black"),
+             panel.background = element_rect(fill= "darkgrey"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+             strip.background = element_blank(),
+             legend.position = "right"
+            )
+
+THEME5=theme(text = element_text(size = 7, colour = "black"), 
+             plot.title = element_text(size = 8, face = "bold"),
+             axis.text.x = element_text(hjust = 1, colour = "black"), 
+             axis.text.y = element_text(colour = "black"), 
+             panel.background = element_rect(fill = "white", colour = "black"),
+             panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+             strip.background = element_blank(),
+             legend.background = element_blank(),legend.key = element_blank(),
+             legend.position = "none"
+            )
+THEME4=theme(text = element_text(size = 14, colour = "black"), 
+             plot.title = element_text(size = 16, face = "bold"),
+             axis.text= element_blank(), axis.title = element_blank(), axis.ticks = element_blank(),
+             axis.line = element_blank(),
+             panel.background = element_blank(),
+             panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+             strip.background = element_blank(),
+             legend.position = "none"
+            )
+
+THEME5=theme(text = element_text(size = 50, colour = "black"), 
+             plot.title = element_text(size = 40, face = "bold"),
+             axis.text.x = element_text(angle = 45, hjust = 1, colour = "black"), 
+             axis.text.y = element_text(colour = "black"), 
+             axis.line = element_line(colour = "black"),
+             panel.background = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+             strip.background = element_blank(),
+             legend.position = "right"
+            )
+```
+
+#Table with all timepoints
+```{r}
+x <- read.table("ST223_common.barcodes.cpm.txt", header=TRUE)
+all_timepoints <- function(D) {
+  dt=data.frame(D, plate=substr(row.names(D),2,3), sample=substr(row.names(D),6,6), protein=substr(row.names(D),49,51), stringsAsFactors = FALSE)
+  dt= dt %>% dplyr::mutate (patient = case_when(protein=="GFP" & sample =="1"  ~ "P",
+                                                protein=="mCh" & sample =="1"  ~ "U",
+                                                protein=="BFP" & sample =="1"  ~ "2",
+                                                protein=="GFP" & sample =="2"  ~ "1",
+                                                protein=="mCh" & sample =="2"  ~ "T",
+                                                protein=="BFP" & sample =="2"  ~ "V"))
+  
+  return(dt)
+}
+
+#For Sis-seq
+common.barcodes.cell.1= all_timepoints(common.barcodes.cell.plate)
+common.barcodes.cpm.1= all_timepoints(common.barcodes.cpm.plate)
+
+write.table(common.barcodes.cpm.1, file="ST223_common.barcodes.cpm.txt", sep="\t", row.names=TRUE, col.names=TRUE)
+write.table(common.barcodes.cell.1, file="ST223_common.barcodes.cell.txt", sep="\t", row.names=TRUE, col.names=TRUE)
+```
+
+#Cell number across timepoints
+```{r}
+cell_number <- common.barcodes.cpm.plate
+cell_number <- melt(cell_number, id.vars = c("plate", "day", "patient"))
+cell_number <- subset(cell_number, value>0)
+cell_number <- cell_number %>% group_by(plate, day, variable) %>% summarise(tot_numbers = sum(value))
+
+cell_number$day = factor(cell_number$day, levels = c("D7","D10","D14", "D17", "D21"))
+ggplot(cell_number, aes(x=day, y=tot_numbers, group= variable, colour= variable))+
+  geom_point()+
+  geom_line(linewidth = 1) + 
+  #scale_color_manual(values = Group_col)+
+  facet_wrap(~plate , scales = "free")+
+THEME2
+
+```
+
+
+#1dumap clustering
+```{r}
+library(Matrix)
+library(leiden)
+dt <- common.barcodes.cpm.1
+dt[,1:40] <- log2(dt[,1:40]+1)
+dt_B <- dt[grepl("PB", rownames(dt)),]
+names(dt_B) <- paste(names(dt_B), "PB", sep = "_")
+dt_B$cons_bc <- substr(rownames(dt_B), 8,27)
+dt_B$cons_bc <- gsub(" ", "", dt_B$cons_bc)
+dt_B$cons_bc <- paste(dt_B$cons_bc, "_", dt_B$patient, sep= "")
+
+
+dt_A <- dt[grepl("PA", rownames(dt)),]
+names(dt_A) <- paste(names(dt_A), "PA", sep = "_")
+dt_A$cons_bc <- substr(rownames(dt_A), 8,27)
+dt_A$cons_bc <- gsub(" ", "", dt_A$cons_bc)
+dt_A$cons_bc <- paste(dt_A$cons_bc, "_", dt_A$patient, sep= "")
+
+
+dt <- inner_join(dt_A, dt_B, by= "cons_bc")
+rownames(dt) <- dt$cons_bc
+dt <- dt[,c(1:40,56:95)]
+dt <- dt[,!grepl("Rest", names(dt))]
+dt <- dt[rowSums(dt)>0,]
+
+
+#Run 1dumap
+u1d <- umap(dt[,1:70] ,metric="cosine", min_dist=0.8, bandwidth=50, n_neighbors=30, negative_sample_rate=20,         spread=10, n_components=1)
+dt$umap1d <- u1d$layout[,1]
+
+m1d <- Matrix(0,nrow=1534,ncol=1534,sparse=TRUE)
+rownames(m1d) <- rownames(u1d$knn$indexes)
+colnames(m1d) <- rownames(u1d$knn$indexes)
+
+#add values to matrix where there is a connection between 2 barcodes
+t <- u1d$knn$indexes
+for (i in 1:dim(t)[1]) {
+  for (j in 1:dim(t)[2]) {
+    m1d[i,t[i,j]] = 1
+  }
+}
+
+
+cluster_30 <- leiden(m1d, resolution_parameter = 0.95)
+
+
+x <- u1d$layout
+dt <- dt[ order(match(rownames(dt), rownames(x))), ]
+dt$umap1d <- u1d$layout[,1]
+dt$cluster <- cluster_30
+
+
+dt_A <- dt[,grepl("_PA", names(dt))]
+names(dt_A) <- gsub("_PA", "", names(dt_A))
+dt_A$umap1d <- u1d30$layout[,1]
+dt_A$cluster_30 <- cluster_30
+dt_A$patient <- substr(row.names(dt_A),22,22)
+dt_A <- select(dt_A , D7_cDC1, D10_cDC1, D14_cDC1, D17_cDC1, D21_cDC1, D7_cDC2, D10_cDC2, D14_cDC2, D17_cDC2, D21_cDC2, D7_pDC, D10_pDC, D14_pDC, D17_pDC, D21_pDC, D7_Mye, D10_Mye, D14_Mye, D17_Mye, D21_Mye, D7_Mast, D10_Mast, D14_Mast, D17_Mast, D21_Mast, D7_Lymph, D10_Lymph, D14_Lymph, D17_Lymph, D21_Lymph, D7_Ery, D10_Ery, D14_Ery, D17_Ery, D21_Ery,umap1d, cluster_30, patient)
+dt_A <- dt_A[rowSums(dt_A[,1:35])>0,]
+dt_A=dt_A[order(dt_A$umap1d),]
+dt_A=dt_A[order(dt_A$cluster_30),]
+anno_row = select(dt_A, patient, cluster_30,)
+anno_row$cluster_30 <- as.factor(anno_row$cluster_30)
+mat_breaks <- seq(min(dt_A[,1:35]), max(dt_A[,1:35]), length.out = 5)
+ pheatmap(data.matrix(dt_A[,1:35]),
+          cluster_rows = F, cluster_cols = F, #cutree_rows = 19,
+          annotation_row = anno_row,
+          #scale = "row", clustering_distance_rows = "maximum",
+          color=barcode_col,
+          annotation_colors = list(patient = Group_col,
+                                   cluster_30= cluster_col),
+          border_color = NA,
+          legend = T, annotation_legend = T, show_rownames = F, fontsize = 20,
+          filename = "heatmap_leiden_cluster_PA.pdf", width = 15 , height = 12)
+
+
+dt_B <- dt[,grepl("_PB", names(dt))]
+names(dt_B) <- gsub("_PB", "", names(dt_B))
+dt_B$umap1d <- u1d30$layout[,1]
+dt_B$cluster_30 <- cluster_30
+dt_B$patient <- substr(row.names(dt_B),22,22)
+dt_B <- select(dt_B , D7_cDC1, D10_cDC1, D14_cDC1, D17_cDC1, D21_cDC1, D7_cDC2, D10_cDC2, D14_cDC2, D17_cDC2, D21_cDC2, D7_pDC, D10_pDC, D14_pDC, D17_pDC, D21_pDC, D7_Mye, D10_Mye, D14_Mye, D17_Mye, D21_Mye, D7_Mast, D10_Mast, D14_Mast, D17_Mast, D21_Mast, D7_Lymph, D10_Lymph, D14_Lymph, D17_Lymph, D21_Lymph, D7_Ery, D10_Ery, D14_Ery, D17_Ery, D21_Ery,umap1d, cluster_30, patient)
+dt_B <- dt_B[rowSums(dt_B[,1:35])>0,]
+dt_B=dt_B[order(dt_B$umap1d),]
+dt_B=dt_B[order(dt_B$cluster_30),]
+anno_row = select(dt_B, patient, cluster_30,)
+anno_row$cluster_30 <- as.factor(anno_row$cluster_30)
+mat_breaks <- seq(min(dt_B[,1:35]+1), max(dt_B[,1:35]), length.out = 5)
+ pheatmap(data.matrix(dt_B[,1:35]),
+          cluster_rows = F, cluster_cols = F, #cutree_rows = 19,
+          annotation_row = anno_row,
+          #scale = "row", clustering_distance_rows = "maximum",
+          color=barcode_col,
+          annotation_colors = list(patient = Group_col,
+                                   cluster_30= cluster_col),
+          border_color = NA,
+          legend = T, annotation_legend = T, show_rownames = F, fontsize = 20,
+          filename = "heatmap_leiden_cluster_PB.pdf", width = 15 , height = 12)
+brewer.pal(8, "Dark2")
+
+cluster_col <- c("1"= "#1B9E77", "2"= "#D95F02", "3"= "#7570B3", "4"= "#E7298A", "5"= "#66A61E", "6"= "#E6AB02", "7"= "#A6761D", "8"= "#666666")
+
+barcode_col= c("0"= "#E4E4E4", "1" =  "#56106EFF", "5.7" = "#9F2A63FF", "10.4"= "#F57D15FF", "15.4"= "#FAC127FF", "19.9"= "#FCFFA4FF")
+```
+
+
+
+
+```{r}
+install.packages("paletteer")
+library(paletteer)
+cluster_colour <- paletteer_d("ggthemes::Classic_20",19)
+dt <- common.barcodes.cpm.1
+dt[,1:40] <- log2(dt[,1:40]+1)
+dt <- select(dt , D7_cDC1, D10_cDC1, D14_cDC1, D17_cDC1, D21_cDC1, D7_cDC2, D10_cDC2, D14_cDC2, D17_cDC2, D21_cDC2, D7_pDC, D10_pDC, D14_pDC, D17_pDC, D21_pDC, D7_Mye, D10_Mye, D14_Mye, D17_Mye, D21_Mye, D7_Mast, D10_Mast, D14_Mast, D17_Mast, D21_Mast, D7_Lymph, D10_Lymph, D14_Lymph, D17_Lymph, D21_Lymph, D7_Ery, D10_Ery, D14_Ery, D17_Ery, D21_Ery, D7_Rest, D10_Rest, D14_Rest, D17_Rest, D21_Rest, patient, cluster,)
+dt <- dt[rowSums(dt[,1:40])>0,]
+dt=dt[order(dt$cluster),]
+anno_row = select(dt, patient, cluster)
+mat_breaks <- seq(min(dt[,1:40]), max(dt[,1:40]), length.out = 5)
+  dendro <- pheatmap(data.matrix(dt[,1:40]),
+          cluster_rows = T, cluster_cols = F, cutree_rows = 19,
+          annotation_row = anno_row,
+          scale = "row", clustering_distance_rows = "maximum",
+          color=inferno(length(mat_breaks) - 1),
+          #annotation_colors = list(patient = Group_col,
+                                   #cluster= cluster_colour),
+          border_color = NA,
+          legend = T, annotation_legend = T, show_rownames = F, fontsize = 20)
+          filename = "heatmap_hierarchical_cluster.pdf", width = 15 , height = 12)
+
+cut_avg <- cutree(dendro$tree_row, k = 19)
+dt$cluster <- cut_avg
+'correlation', 'euclidean', 'maximum', 'manhattan', 'canberra', 'binary', 'minkowski'
+
+#maximum cut_tree 17
+```
+
+
+
+#umap
+```{r}
+library(umap)
+dt <- common.barcodes.cpm.1
+dt[,1:40] <- log2(dt[,1:40]+1)
+
+u <- umap(dt[,1:40],metric="cosine", min_dist=0.5, n_neighbors=100, spread=10)
+
+dt$umap1 = u$layout[,1]
+dt$umap2 = u$layout[,2]
+all_time_cpm.common$umap1= u$layout[,1]
+all_time_cpm.common$umap2= u$layout[,2]
+
+#check that barcodes in cmp dataset are in the same order of the ones in the cell number dataset
+all(rownames(all_time_cpm.common)== rownames(all_time_cell.common))
+# Put umap values in cell numer dataset
+all_time_cell.common$umap1= u$layout[,1]
+all_time_cell.common$umap2= u$layout[,2]
+
+dt$day = factor(dt$day, levels = c("D7","D10","D14", "D17", "D21"))
+ggplot(dt, aes(x= umap1, y=umap2, colour= as.factor(fate_bias))) + 
+  scale_colour_manual(values = bias_col)+
+    geom_point(size=0.5)+
+   facet_wrap(~day)+
+   THEME2
+
+ggplot(dt, aes(x= umap1, y=umap2, colour= as.factor(cluster))) + 
+    geom_point(size=0.5)+
+  #xlim (-30, 30)+
+  #ylim (-30, 30)+
+   THEME2
+
+#u <- umap(dt[,1:8],metric="cosine", min_dist=4, n_neighbors=80, spread=10) not bad
+#u <- umap(dt[,1:8],metric="cosine", min_dist=1, spread=2)
+```
+
+
+#line plot area
+```{r}
+try <- tot.common
+try$barcode <- rownames(try)
+try$barcode <- gsub("D7_", "", try$barcode )
+try$barcode <- gsub("D10_", "", try$barcode )
+try$barcode <- gsub("D14_", "", try$barcode )
+try$barcode <- gsub("D17_", "", try$barcode )
+try$barcode <- gsub("D21_", "", try$barcode )
+try$barcode <- gsub("PA ", "", try$barcode )
+try$barcode <- gsub("PB ", "", try$barcode )
+try$barcode <- gsub("PC ", "", try$barcode )
+#try$barcode <- gsub("1 ", "", try$barcode )
+#try$barcode <- gsub("2 ", "", try$barcode )
+
+try <-  melt(try,id.vars=c("fate", "plate", "day", "sample", "protein", "bin", "fate_bias", "patient", "biomass", "biomass_norm", "barcode"))
+try <-  filter(try, !plate=="PC")
+try <- filter(try, value>0)
+try$day = factor(try$day, levels = c("D7","D10","D14", "D17", "D21"))
+
+cDC1 <- filter(try, variable == "cDC1")
+cDC2 <- filter(try, variable == "cDC2")
+pDC <- filter(try, variable == "pDC")
+Mye <- filter(try, variable == "Mye")
+Lymph <- filter(try, variable == "Lymph")
+Ery <- filter(try, variable == "Ery")
+Mast <- filter(try, variable == "Mast")
+Rest <- filter(try, variable == "Rest")
+
+jpeg(filename = "cDC1_line.jpeg", width = 4000, height = 2000, res= 300) 
+ggplot(cDC1, aes(x=day, y=value, group= barcode, colour= barcode))+
+  geom_line(linewidth = 1) + 
+  geom_area()+
+  scale_color_manual(values = generate.random.colors(unique(cDC1$barcode)))+
+  facet_wrap(~plate, scales = "free")+
+THEME1
+dev.off()
+
+jpeg(filename = "cDC1_line.jpeg", width = 4000, height = 2000, res= 300) 
+ggplot(cDC2, aes(x=day, y=value, group= barcode, fill= barcode)) + 
+    geom_area(alpha=0.8 , linewidth=0.1, colour="black")+
+    scale_fill_manual(values = generate.random.colors(unique(cDC2$barcode)))+
+    facet_wrap(~plate)+
+  THEME1
+dev.off()
+```
+
+#cosine similarity between barcodes in plate A and plate B
+```{r}
+library(lsa)
+
+PA <- common.barcodes.cpm.1[grepl('PA', rownames(common.barcodes.cpm.1)), 1:40]
+PB <- common.barcodes.cpm.1[grepl('PB', rownames(common.barcodes.cpm.1)), 1:40]
+
+PA <- log2(PA+1)
+PB <- log2(PB+1)
+
+rownames(PA) <- gsub("_PA ", "" ,rownames(PA))
+rownames(PB) <- gsub("_PB ", "" ,rownames(PB))
+
+#Extract rows with the same row names
+matching_rows_PA <- PA[rownames(PA) %in% rownames(PB),]
+matching_rows_PB <- PB[rownames(PB) %in% rownames(PA),]
+
+# Calculate the cosine similarity between matching rows
+barcode= unique(rownames(matching_rows_PB))
+a= data.frame()
+for (b in barcode)
+{
+  dtm_A = as.numeric(subset(matching_rows_PA, rownames(matching_rows_PA)==b))
+  dtm_B = as.numeric(subset(matching_rows_PB, rownames(matching_rows_PB)==b))
+  cosine_similarity <- cosine(dtm_A, dtm_B)
+  barcodes= b
+  cosine = cosine_similarity
+  d= data.frame(barcodes = barcodes, cosine= cosine)
+  a= rbind(a,d)
+}
+
+a <- na.omit(a)
+a$well <- 'sister_well'
+a <- filter(a, cosine>0)
+high_cosine <- filter(a, cosine>0.9)
+high_cosine$barcodes <- gsub("_1", "1", high_cosine$barcodes)
+high_cosine$barcodes <- gsub("_2", "2", high_cosine$barcodes)
+
+#calculate random cosine similarity
+matching_rows_PB <- matching_rows_PB[sample(1:nrow(matching_rows_PB)), ]
+rownames(matching_rows_PA) <- NULL
+rownames(matching_rows_PB) <- NULL
+
+barcode= unique(rownames(matching_rows_PB))
+null= data.frame()
+for (b in barcode)
+{
+  dtm_A = as.numeric(subset(matching_rows_PA, rownames(matching_rows_PA)==b))
+  dtm_B = as.numeric(subset(matching_rows_PB, rownames(matching_rows_PB)==b))
+  cosine_similarity <- cosine(dtm_A, dtm_B)
+  barcodes= b
+  cosine = cosine_similarity
+  d= data.frame(barcodes = barcodes, cosine= cosine)
+  null= rbind(null,d)
+}
+
+null$well <- 'random_sisters'
+a <- rbind(a, null)
+a.1 <- filter(a, cosine>0)
+
+ggplot(a.1, aes(x= well, y=cosine)) +
+    geom_boxplot() +
+    geom_jitter(color="black", size=0.6, alpha=0.9)+
+  THEME2
+
+```
+
+
+#line plot area per barcode
+```{r}
+try <- tot.common
+try[,1:8] <- log2(try[,1:8]+1)
+try$barcode <- rownames(try)
+try$barcode <- gsub("D7_", "", try$barcode )
+try$barcode <- gsub("D10_", "", try$barcode )
+try$barcode <- gsub("D14_", "", try$barcode )
+try$barcode <- gsub("D17_", "", try$barcode )
+try$barcode <- gsub("D21_", "", try$barcode )
+try$barcode <- gsub("_PA ", "", try$barcode )
+try$barcode <- gsub("_PB ", "", try$barcode )
+try$plate <- gsub("_", "", try$plate )
+#try$barcode <- gsub("PC ", "", try$barcode )
+#try$barcode <- gsub("1 ", "", try$barcode )
+#try$barcode <- gsub("2 ", "", try$barcode )
+try <- filter(try, !patient == 'is.na')
+#try <- filter(try, !fate_bias== 1)
+
+try <- try[try$barcode %in% high_cosine$barcodes,]
+
+try <-  melt(try,id.vars=c("fate", "plate", "day", "sample", "protein", "bin", "fate_bias", "patient", "biomass", "biomass_norm", "barcode"))
+try$day = factor(try$day, levels = c("D7","D10","D14", "D17", "D21"))
+
+pdf(file = "line_plot_barcodes.pdf", width = 6, height = 6)
+barcode= unique(try$barcode)
+for (b in barcode)
+{
+  dtm = subset(try, try$barcode==b)
+  dtm$day = factor(dtm$day, levels = c("D7","D10","D14", "D17", "D21"))
+  dtm$variable = factor(dtm$variable, levels = c("cDC1","cDC2","pDC", "Mye", "Mast", "Ery", "Lymph", "Rest"))
+  print(
+     ggplot(dtm, aes(x=day, y=value, group= variable, fill= variable)) + 
+    geom_ribbon(aes(ymin=0, ymax=value),alpha=0.6 , linewidth=0.1, colour="black")+
+      scale_fill_manual(values = pop_col)+
+      facet_wrap(~plate)+
+  THEME2 +
+    ggtitle(b)
+    )
+}
+dev.off()
+
+jpeg(filename = "cDC1_line.jpeg", width = 4000, height = 2000, res= 300) 
+ggplot(cDC1, aes(x=day, y=value, group= barcode, colour= barcode))+
+  geom_line(linewidth = 1) + 
+  geom_area()+
+  scale_color_manual(values = generate.random.colors(unique(cDC1$barcode)))+
+  facet_wrap(~plate, scales = "free")+
+THEME1
+dev.off()
+
+jpeg(filename = "cDC1_line.jpeg", width = 4000, height = 2000, res= 300) 
+ggplot(cDC2, aes(x=day, y=value, group= barcode, fill= barcode)) + 
+    geom_area(alpha=0.8 , linewidth=0.1, colour="black")+
+    scale_fill_manual(values = generate.random.colors(unique(cDC2$barcode)))+
+    facet_wrap(~plate)+
+  THEME1
+dev.off()
+
+
+ ggplot(dtm, aes(x=day, y=value, group= variable, fill= variable)) + 
+    geom_ribbon(aes(ymin=0, ymax=value),alpha=0.6 , linewidth=0.1, colour="black")+
+      scale_fill_manual(values = pop_col)+
+      facet_wrap(~plate)+
+  THEME2 +
+    ggtitle(b)
+```
+
+
+
+#Barcode count
+```{r}
+#Put patients as columns
+cpm.b.common$barcode <- rownames(cpm.b.common)
+patient <-  melt(cpm.b.common,id.vars=c("fate","plate", "day", "sample", "protein", "bin", "fate_bias", "patient", "barcode", "umap1", "umap2"))
+patient <- dcast(patient, barcode~patient, value.var = "value", fill = 0, fun.aggregate=sum)
+ 
+
+patient=data.frame(patient, plate=substr(patient$barcode,1,2), day=substr(patient$barcode,4,6), stringsAsFactors = FALSE)
+patient$day=gsub("_","",patient$day)
+
+patient$barcode <- gsub("D7_", "", patient$barcode )
+patient$barcode <- gsub("D10_", "", patient$barcode )
+patient$barcode <- gsub("D14_", "", patient$barcode )
+patient$barcode <- gsub("D17_", "", patient$barcode )
+patient$barcode <- gsub("D21_", "", patient$barcode )
+patient$barcode <- gsub("1 ", "", patient$barcode )
+patient$barcode <- gsub("2 ", "", patient$barcode )
+#patient$barcode <- gsub("PA ", "", patient$barcode )
+#patient$barcode <- gsub("PB ", "", patient$barcode )
+#patient$barcode <- gsub("PC ", "", patient$barcode )
+
+colnames(patient)[2] <- "1"
+colnames(patient)[3] <- "2"
+
+patient.m <-  melt(patient,id.vars=c("barcode","day", "plate"))
+patient.m <- filter(patient.m, value>0)
+
+P1 <- filter(patient.m, variable== "1")
+P2 <- filter(patient.m, variable== "2")
+PT <- filter(patient.m, variable== "T")
+PU <- filter(patient.m, variable== "U")
+PV <- filter(patient.m, variable== "V")
+PP <- filter(patient.m, variable== "P")
+
+dt.2 <- dcast(PP, barcode~day, value.var = "value",fill = 0, fun.aggregate=sum)
+rownames(dt.2) <- dt.2$barcode
+dt.2 <- dt.2[-1]
+dt.2[is.na(dt.2)]=0
+dt.2_A= dt.2[grepl("PA", rownames(dt.2)),]
+dt.2_B= dt.2[grepl("PB", rownames(dt.2)),]
+dt.2_C= dt.2[grepl("PC", rownames(dt.2)),]
+dt.2_A=sweep(dt.2_A,2,colSums(dt.2_A)/1e2,`/`)
+dt.2_B=sweep(dt.2_B,2,colSums(dt.2_B)/1e2,`/`)
+dt.2_C=sweep(dt.2_C,2,colSums(dt.2_C)/1e2,`/`)
+dt.2 <- rbind(dt.2_A, dt.2_B, dt.2_C)
+dt.2=select(dt.2, D7, D10, D14, D17, D21)
+#dt.2=select(dt.2, 1, P, 2, V)
+
+m <- dt.2
+binary=array()
+    for(i in 1:nrow(m)) binary[i]=paste0(as.numeric((m>0)[i,]),collapse = "")
+    m=m[order(binary,rowSums(m)),]
+  
+    m$index=1:nrow(m)
+  m$code=row.names(m)
+  m=data.frame(m, plate=substr(m$code,1,2))
+  m$code=gsub("PA", "", m$code)
+  m$code=gsub("PB", "", m$code)
+  m$code=gsub("PC", "", m$code)
+  mm=reshape::melt(m,id.var=c("index","code", "plate"))
+ 
+jpeg(filename = "P1_his.jpeg", width = 250, height = 200, res= 300) 
+  ggplot(mm, aes(x=variable, y=value))+
+  geom_col(aes(fill = code), width = 0.7, alpha = 1)+
+  scale_fill_manual(values = generate.random.colors(unique(mm$code)))+
+  facet_wrap(~plate)+
+  THEME1
+dev.off()
+ 
+ggplot(mm, aes(x=variable, y=value, group= code, fill= code)) + 
+    geom_area(alpha=0.8 , linewidth=0.1, colour="black")+
+    scale_fill_manual(values = generate.random.colors(unique(mm$code)))+
+    facet_wrap(~plate)+
+  THEME1
+
+
+patient <- select(patient, barcode, day, plate, P, "1", V, U, "2", T)
+D7 <- filter(patient, day=="D7")
+D10 <- filter(patient, day=="D10")
+D14 <- filter(patient, day=="D14")
+D17 <- filter(patient, day=="D17")
+D21 <- filter(patient, day=="D21")
+
+colSums(D7>0)
+colSums(D10>0)
+colSums(D14>0)
+colSums(D17>0)
+colSums(D21>0)
+
+detach(package:plyr)
+detach(package:tidyr)
+bc.count <- patient.m %>% group_by(plate, day, variable) %>% summarise(count= sum(value>0))
+bc.count$day <- factor(bc.count$day, levels = c("D7","D10","D14", "D17", "D21"))
+
+bc.count <- data.frame(colnames=colnames(patient), D0=colSums(D0>0), D7=colSums(D7>0), D10=colSums(D10>0), D14=colSums(D14>0), D17=colSums(D17>0), D21=colSums(D21>0) )
+bc.count <- as.data.frame(t(bc.count))
+bc.count$day <- rownames(bc.count)
+bc.count <- bc.count[-1,]
+bc.count <-  melt(bc.count,id.vars=c("day", "barcode"))
+bc.count$value <- as.numeric(bc.count$value)
+
+bc.count$day <- factor(bc.count$day, levels = c("D0","D7","D10","D14", "D17", "D21"))
+ggplot(bc.count, aes(x=day, y=count, group= variable, colour= variable))+
+  geom_line(linewidth = 1) + 
+  scale_color_manual(values = Group_col)+
+  facet_wrap(~plate)+
+THEME2
+
+```
+
+#Cosine similarity and clone size consevation
+```{r}
+library(fuzzyjoin)
+tot_populations.common_A <- tot_populations.common[grepl("PA", rownames(tot_populations.common)),]
+tot_populations.common_B <- tot_populations.common[grepl("PB", rownames(tot_populations.common)),]
+tot_populations.common_A$code <- rownames(tot_populations.common_A)
+tot_populations.common_B$code <- rownames(tot_populations.common_B)
+tot_populations.common_A$code=gsub("PA", "",tot_populations.common_A$code)
+tot_populations.common_B$code=gsub("PB", "",tot_populations.common_B$code)
+cosine <- tot_populations.common_A %>% 
+  stringdist_full_join(tot_populations.common_B, by = c('code' = 'code'), 
+                       method = "cosine", 
+                       distance_col = "distance")
+```
+
+
+#Venn diagram
+```{r}
+venn <- all_barcodes
+venn <- transmute(venn, PA= rowSums(select(venn, ends_with("PA"))), PB= rowSums(select(venn, ends_with("PB"))), PC= rowSums(select(venn, ends_with("PC"))))
+venn.2 <- transmute(venn, Exp1= rowSums(select(venn, ends_with("PA") | ends_with("PB"))),                       
+                           Exp2=rowSums(select(venn, ends_with("PC"))))
+#No PCR replicates filtering
+names(ST208.1) <- paste(names(ST208.1), "PC", sep = "_")
+names(ST208.1)[1] <- "barcode"
+all_barcodes_PCR <- full_join(ST218.1, ST208.1, by= "barcode")
+all_barcodes_PCR[is.na(all_barcodes_PCR)]=0
+rownames(all_barcodes_PCR) <- all_barcodes_PCR$barcode
+all_barcodes_PCR= select(all_barcodes_PCR, -barcode)
+all_barcodes_PCR=all_barcodes[rowSums(all_barcodes_PCR)>0,]
+
+venn.PCR= all_barcodes_PCR
+venn.PCR <- transmute(venn.PCR, PA= rowSums(select(venn.PCR, contains("PA"))), PB= rowSums(select(venn.PCR, contains("PB"))), PC= rowSums(select(venn.PCR, ends_with("PC"))))
+
+#Binarise data set
+binarise_data_set <- function(b){
+ row.names(b) <- NULL #give a number to each barcode
+ b <- apply(ifelse(b>1,rownames(b),0),2,paste) #put the barcode number in each sample if present
+ b <- as.data.frame(b)
+ b <- list('PA'= b$PA,'PB'= b$PB, 'PC'= b$PC)
+ b <- lapply(b,function(x) x[x!=0])
+ return(b)
+}
+
+binarise_data_set <- function(b){
+ row.names(b) <- NULL #give a number to each barcode
+ b <- apply(ifelse(b>1,rownames(b),0),2,paste) #put the barcode number in each sample if present
+ b <- as.data.frame(b)
+ b <- list('Exp1'= b$Exp1,'Exp2'= b$Exp2)
+ b <- lapply(b,function(x) x[x!=0])
+ return(b)
+}
+
+venn.bin <- binarise_data_set(venn)
+venn.PCR.bin <- binarise_data_set(venn.PCR)
+venn.2.bin <- binarise_data_set(venn.2)
+
+myvenn <- plotVenn(venn.PCR.bin, nCycles = 7000, labelRegions = F, fontScale = 3, setColors = c('teal', 'orange', 'red'),systemShow= TRUE)
+myvenn <- plotVenn(venn.2.bin, nCycles = 7000, labelRegions = F, fontScale = 3, setColors = c('orange', 'red'),systemShow= TRUE)
+ggvenn(venn.bin)
+ggvenn(m35.bin[c(1,4,5,11)])
+```
+
+#1d umap transcriptome vs fate
+```{r}
+ST223.annotated <- readRDS("/stornext/General/data/academic/lab_naik/Sara_Tomei/R_analysis/10X_Analysis/ST223/ST223.annotated.rds")
+
+dt <- common.barcodes.cpm.1
+dt[,1:40] <- log2(dt[,1:40]+1)
+dt$cluster <- cut_avg
+transcriptome_vs_fate <- dt[grepl("PB", rownames(dt)),]
+transcriptome_vs_fate$cons_bc <- substr(rownames(transcriptome_vs_fate), 8,27)
+transcriptome_vs_fate$cons_bc <- gsub(" ", "", transcriptome_vs_fate$cons_bc)
+transcriptome_vs_fate$cons_bc <- paste(transcriptome_vs_fate$cons_bc, "_", transcriptome_vs_fate$patient, sep= "")
+
+transcriptome_vs_fate_PA <- dt[grepl("PA", rownames(dt)),]
+transcriptome_vs_fate_PA$cons_bc <- substr(rownames(transcriptome_vs_fate_PA), 8,27)
+transcriptome_vs_fate_PA$cons_bc <- gsub(" ", "", transcriptome_vs_fate_PA$cons_bc)
+transcriptome_vs_fate_PA$cons_bc <- paste(transcriptome_vs_fate_PA$cons_bc, "_", transcriptome_vs_fate_PA$patient, sep= "")
+
+transcriptome_vs_fate <- inner_join(transcriptome_vs_fate, transcriptome_vs_fate_PA, by= "cons_bc")
+transcriptome_vs_fate <- inner_join(transcriptome_vs_fate, try, by= "cons_bc")
+
+umap1d <- umap(transcriptome_vs_fate[,1:40] ,metric="cosine", min_dist=0.1, bandwidth=50, n_neighbors=30, negative_sample_rate=20, spread=5, n_components=1)
+
+umap1d.1 <- umap(transcriptome_vs_fate[,1:40] ,metric="cosine", min_dist=0.1, bandwidth=50, n_neighbors=30, negative_sample_rate=20, spread=5, n_components=1)
+
+transcriptome_vs_fate$umap1d <- umap1d$layout[,1]
+transcriptome_vs_fate <- select(transcriptome_vs_fate, cluster, cons_bc, umap1d)
+
+ST223.annotated@meta.data$cons_bc <- paste(ST223.annotated@meta.data$cons_bc, "_", ST223.annotated@meta.data$donor_id, sep= "")
+
+ST223.annotated@meta.data <- left_join(ST223.annotated@meta.data, transcriptome_vs_fate, by= "cons_bc")
+rownames(ST223.annotated@meta.data) <- ST223.annotated@meta.data$cell
+
+Idents(ST223.annotated) <- "cluster"
+ST223.annotated_fate <- subset(ST223.annotated, idents = c("1", "3", "5", "6", "7", "8", "9", "11", "12", "13", "15", "16", "17", "18", "19"))
+
+DefaultAssay(ST223.annotated_fate) <- 'RNA'
+ST223.annotated_fate <- RunUMAP(ST223.annotated_fate, reduction = 'pca', dims = 1:30, reduction.name = "1d.rna.umap", reduction.key = '1drnaUMAP_',  n.components = 1)
+
+try <- select(ST223.annotated_fate@meta.data, cell, cluster, umap1d, seurat_clusters, cons_bc)
+try$rna_umap <- ST223.annotated_fate@reductions$X1d.rna.umap@cell.embeddings[,1]
+names(try)[3] <- 'fate_umap'
+
+transcriptome_vs_fate <- inner_join(transcriptome_vs_fate, try, by= "cons_bc")
+
+new.cluster.ids <- data.frame(populations= c("primitive-RBC", "Mk-ery_prog", "Mk", "early_lymphoid_progenitor", "HSC", "basophil-mast_progenitor", "pre-cDC", "Ery", "Mk", "CDP", "CD14+Monocyte", "CMP-GMP",  "Ery", "Ery", "Mk", "15"), seurat_clusters= c("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"))
+
+transcriptome_vs_fate <- left_join(transcriptome_vs_fate, new.cluster.ids, by="seurat_clusters")
+transcriptome_vs_fate <- left_join(transcriptome_vs_fate, metadata, by="barcode_short")
+
+#leiden clustering on 1d umap
+cluster_1d <- leiden(m1d, resolution_parameter = 0.95)
+cluster_1d.1 <- leiden(m1d, resolution_parameter = 0.98)
+transcriptome_vs_fate$cluster_1d <- cluster_1d.1
+
+transcriptome_vs_fate <- filter(transcriptome_vs_fate, !seurat_clusters=="15")
+
+ggplot(transcriptome_vs_fate, aes(x= fate_umap, y=rna_umap, colour= as.factor(fate_cluster))) + 
+  scale_colour_manual(values = cluster_colour)+
+    geom_point(size=1)+
+   scale_fill_manual(name="fate cluster")+
+  THEME2
+  
+set.seed(12345)
+transcriptome_vs_fate$random = sample(1:100, replace=TRUE, nrow(transcriptome_vs_fate))
+dt = transcriptome_vs_fate
+
+pdf("1dumap_dotplot_Group.pdf", height=6, width=6)
+ggplot(dt, aes(fate_umap, random, col=as.factor(fate_cluster)))+
+  geom_point(size=1, alpha=1)+
+  #facet_wrap(~Group, ncol = 1, scales = "free_y")+
+  scale_colour_manual(values = cluster_colour)+
+  THEME2
+dev.off()
+
+write.table(transcriptome_vs_fate, file=("transcriptome_vs_fate.txt"), sep="\t", row.names=TRUE, col.names=TRUE)
+read.table()
+```
+
+```{r}
+transcriptome_vs_fate.2 <- select(transcriptome_vs_fate, cell, fate_umap, fate_cluster)
+
+ST223.annotated_fate@meta.data <- left_join(ST223.annotated_fate@meta.data, transcriptome_vs_fate.2, by= "cell")
+rownames(ST223.annotated_fate@meta.data) <- ST223.annotated_fate@meta.data$cell
+
+Idents(ST223.annotated_fate) <- 'seurat_clusters'
+DimPlot(ST223.annotated_fate, reduction = 'wnn.umap', label = TRUE, repel = TRUE, label.size = 4)
+
+new.cluster.ids <- c("primitive-RBC", "Mk-ery_prog", "Mk", "early_lymphoid_progenitor", "HSC", "basophil-mast_progenitor", "pre-cDC", "Ery", "Mk", "CDP", "CD14+Monocyte", "CMP-GMP",  "Ery", "Ery", "Mk", "15")
+names(new.cluster.ids) <- levels(ST223.annotated_fate)
+ST223.annotated_fate <- RenameIdents(ST223.annotated_fate, new.cluster.ids)
+DimPlot(ST223.annotated_fate, reduction = 'wnn.umap', label = TRUE, repel = TRUE, label.size = 4)
+
+Idents(ST223.annotated_fate) <- 'predicted.celltype'
+ST223.annotated_fate_HSC <- subset(ST223.annotated_fate, idents = c("HSC", "LMPP"))
+DefaultAssay(ST223.annotated_fate_HSC) <- 'RNA'
+ST223.annotated_fate_HSC <- ScaleData(ST223.annotated_fate_HSC)
+Idents(ST223.annotated_fate_HSC) <- 'fate_cluster'
+ST223.annotated_fate_HSC <- subset(ST223.annotated_fate_HSC, idents = c("3", "5", "6"))
+ST223.annotated_fate_HSC <- NormalizeData(ST223.annotated_fate_HSC) %>% FindVariableFeatures() %>% ScaleData() %>% RunPCA()
+ST223.annotated_fate_HSC <- FindNeighbors(ST223.annotated_fate_HSC, dims = 1:10)
+ST223.annotated_fate_HSC <- FindClusters(ST223.annotated_fate_HSC, resolution = 0., verbose = FALSE)
+ST223.annotated_fate_HSC <- RunUMAP(ST223.annotated_fate_HSC, dims = 1:10)
+DimPlot(ST223.annotated_fate_HSC, reduction = "umap", label = TRUE)
+
+Idents(ST223.annotated_fate_HSC) <- 'fate_cluster'
+DimPlot(ST223.annotated_fate_HSC, reduction = "umap", label = TRUE)
+
+HSC.de.markers <- FindMarkers(ST223.annotated_fate_HSC, ident.1 = "5", ident.2 = "6")
+HSC.de.markers <- FindAllMarkers(ST223.annotated_fate_HSC, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+
+HSC.de.markers_10 <- HSC.de.markers %>%
+  group_by(cluster) %>%
+  slice_max(n = 15, order_by = avg_log2FC)
+
+HSC.de.markers_10 <- HSC.de.markers %>%
+  slice_max(n = 30, order_by = avg_log2FC)
+HSC.de.markers_10$gene <- rownames(HSC.de.markers_10)
+
+library(ComplexHeatmap)
+counts.HSC <- GetAssayData(ST223.annotated_fate_HSC, assay="RNA", slot="data")
+counts.HSC <- as.data.frame(counts.HSC[rownames(counts.HSC) %in% HSC.de.markers_10$gene, ])
+counts.HSC$gene <- rownames(counts.HSC)
+counts.HSC <- left_join(counts.HSC, HSC.de.markers_10, by= "gene")
+rownames(counts.HSC)=counts.HSC$gene
+counts.HSC <- counts.HSC[order(counts.HSC$cluster, counts.HSC$avg_log2FC, decreasing = TRUE),]
+counts.HSC <-  counts.HSC[,1:152]
+metadata.HSC <-ST223.annotated_fate_HSC@meta.data
+metadata.HSC$cell <- rownames(metadata.HSC)
+metadata.HSC <- metadata.HSC[rownames(metadata.HSC) %in% colnames(counts.HSC), ]
+counts.HSC <- as.data.frame(t(counts.HSC))
+
+umap1dHSC <-  umap(counts.HSC ,metric="cosine", min_dist=0.1, bandwidth=50, n_neighbors=10, negative_sample_rate=20, spread=5, n_components=1)
+counts.HSC$umap1dHSC <- umap1dHSC$layout[,1]
+counts.HSC$cell <- rownames(counts.HSC)
+
+counts.HSC <- left_join(counts.HSC, metadata.HSC, by = "cell")
+counts.HSC <- counts.HSC[order(counts.HSC$umap1dHSC),]
+counts.HSC <- counts.HSC[order(counts.HSC$fate_cluster),]
+colAnn = HeatmapAnnotation(
+    score = counts.HSC$predicted.celltype.score, 
+    cluster = as.factor(counts.HSC$fate_cluster),
+    col = list(score = colorRamp2(c(0, 1), c("white", "red")),
+               cluster = c("3" = "#1B9E77",  "5"= "#D95F02", "6"= "#7570B3"),
+    which = 'col'
+    )
+)
+barcode=colorRamp2(c(-2, 0, 2), c("purple", "black", "yellow"))
+scaled_mat = scale(counts.HSC[,1:45])
+Heatmap(t(scaled_mat), name = "mat", col = barcode, show_column_dend = FALSE, top_annotation=colAnn, show_row_names = TRUE, cluster_rows = FALSE, cluster_columns=FALSE)
+mouse <- HeatmapAnnotation(as.factor(metadata.HSC))
+
+jpeg("heatmap_HSC_clustering_rna.jpeg", width = 3000, height = 5000, res = 300)
+DoHeatmap(ST223.annotated_fate_HSC, features = HSC.de.markers_10$gene)
+dev.off()
+
+#fate selection
+fate_selection <- select(ST223.annotated_fate_HSC@meta.data, cons_bc, fate_cluster, donor_id)
+fate_selection <- fate_selection[!duplicated(fate_selection$cons_bc),]
+d.avg$cons_bc <- rownames(d.avg)
+fate_selection <- left_join(fate_selection,d.avg,  by = "cons_bc" )
+
+
+fate_selection <- select(fate_selection , D7_cDC1, D10_cDC1, D14_cDC1, D17_cDC1, D21_cDC1, D7_cDC2, D10_cDC2, D14_cDC2, D17_cDC2, D21_cDC2, D7_pDC, D10_pDC, D14_pDC, D17_pDC, D21_pDC, D7_Mye, D10_Mye, D14_Mye, D17_Mye, D21_Mye, D7_Mast, D10_Mast, D14_Mast, D17_Mast, D21_Mast, D7_Lymph, D10_Lymph, D14_Lymph, D17_Lymph, D21_Lymph, D7_Ery, D10_Ery, D14_Ery, D17_Ery, D21_Ery, donor_id, fate_cluster,)
+fate_selection <- fate_selection[rowSums(fate_selection[,1:35])>0,]
+fate_selection=fate_selection[order(fate_selection$fate_cluster),]
+names(fate_selection)[36] <- "patient"
+anno_row = select(fate_selection, patient, fate_cluster)
+anno_row$fate_cluster <- as.factor(anno_row$fate_cluster)
+mat_breaks <- seq(min(fate_selection[,1:35]), max(fate_selection[,1:35]), length.out = 5)
+fate_cluster_col <- c("3"= "#1B9E77",  "5"= "#D95F02", "6"= "#7570B3")
+#Group_col = c("V"="#C2BC80",
+              "P"="#865640", "1"="#BD582C",
+              "U"="#E48312")
+  pheatmap(data.matrix(fate_selection[,1:35]),
+          cluster_rows = F, cluster_cols = F, #cutree_rows = 19,
+          annotation_row = anno_row,
+          #scale = "row", clustering_distance_rows = "maximum",
+          color=barcode_col,
+          annotation_colors = list(patient = Group_col,
+                                   fate_cluster= fate_cluster_col),
+          border_color = NA,
+          legend = T, annotation_legend = T, show_rownames = F, fontsize = 20)
+          filename = "heatmap_HSC_fate_cluster.pdf", width = 15 , height = 12)
+
+ST223.annotated_fate_CMP <- subset(ST223.annotated_fate, idents = "basophil-mast_progenitor")
+DefaultAssay(ST223.annotated_fate_CMP) <- 'RNA'
+ST223.annotated_fate_CMP <- ScaleData(ST223.annotated_fate_CMP)
+Idents(ST223.annotated_fate_CMP) <- 'fate_cluster'
+ST223.annotated_fate_CMP <- subset(ST223.annotated_fate_CMP, idents = c("2", "8", "14"))
+CMP.de.markers <- FindMarkers(ST223.annotated_fate_CMP, ident.1 = "5", ident.2 = "6")
+CMP.de.markers <- FindAllMarkers(ST223.annotated_fate_CMP, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+
+CMP.de.markers_10 <- CMP.de.markers %>%
+  group_by(cluster) %>%
+  slice_max(n = 30, order_by = avg_log2FC)
+
+jpeg("heatmap_HSC_clustering_rna.jpeg", width = 3000, height = 5000, res = 300)
+DoHeatmap(ST223.annotated_fate_CMP, features = CMP.de.markers_10$gene) + NoLegend()
+dev.off()
+
+#fate selection
+fate_selection <- as.data.frame(ST223.annotated_fate_CMP@meta.data$cell)
+names(fate_selection) <- "cell"
+fate_selection=inner_join(transcriptome_vs_fate, fate_selection, by="cell" )
+
+fate_selection <- select(fate_selection , D7_cDC1, D10_cDC1, D14_cDC1, D17_cDC1, D21_cDC1, D7_cDC2, D10_cDC2, D14_cDC2, D17_cDC2, D21_cDC2, D7_pDC, D10_pDC, D14_pDC, D17_pDC, D21_pDC, D7_Mye, D10_Mye, D14_Mye, D17_Mye, D21_Mye, D7_Mast, D10_Mast, D14_Mast, D17_Mast, D21_Mast, D7_Lymph, D10_Lymph, D14_Lymph, D17_Lymph, D21_Lymph, D7_Ery, D10_Ery, D14_Ery, D17_Ery, D21_Ery, patient, fate_cluster,)
+fate_selection <- fate_selection[rowSums(fate_selection[,1:35])>0,]
+fate_selection=fate_selection[order(fate_selection$fate_cluster),]
+anno_row = select(fate_selection, patient, fate_cluster)
+anno_row$fate_cluster <- as.factor(anno_row$fate_cluster)
+mat_breaks <- seq(min(fate_selection[,1:35]), max(fate_selection[,1:35]), length.out = 5)
+fate_cluster_col <- c("2"= "#1B9E77",  "8"= "#D95F02", "14"= "#7570B3")
+#Group_col = c("V"="#C2BC80",
+              "P"="#865640", "1"="#BD582C",
+              "U"="#E48312")
+  pheatmap(data.matrix(fate_selection[,1:35]),
+          cluster_rows = F, cluster_cols = F, #cutree_rows = 19,
+          annotation_row = anno_row,
+          #scale = "row", clustering_distance_rows = "maximum",
+          color=barcode_col,
+          annotation_colors = list(patient = Group_col,
+                                   fate_cluster= fate_cluster_col),
+          border_color = NA,
+          legend = T, annotation_legend = T, show_rownames = F, fontsize = 20)
+          filename = "heatmap_CMP_fate_cluster.pdf", width = 15 , height = 12)
+
+DefaultAssay(ST223.annotated_fate) <- 'RNA'
+ST223.annotated_fate <- ScaleData(ST223.annotated_fate)
+Idents(ST223.annotated_fate) <- 'fate_cluster'
+levels(ST223.annotated_fate) <- c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14")
+all.de.markers <- FindAllMarkers(ST223.annotated_fate, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+
+all.de.markers_10 <- all.de.markers %>%
+  group_by(cluster) %>%
+  slice_max(n = 10, order_by = avg_log2FC)
+
+jpeg("heatmap_HSC_clustering_rna.jpeg", width = 3000, height = 5000, res = 300)
+DoHeatmap(ST223.annotated_fate, features = all.de.markers_10$gene) + NoLegend()
+dev.off()
+
+#fate selection
+fate_selection <- as.data.frame(ST223.annotated_fate@meta.data$cell)
+names(fate_selection) <- "cell"
+fate_selection=inner_join(transcriptome_vs_fate, fate_selection, by="cell" )
+
+fate_selection <- select(fate_selection , D7_cDC1, D10_cDC1, D14_cDC1, D17_cDC1, D21_cDC1, D7_cDC2, D10_cDC2, D14_cDC2, D17_cDC2, D21_cDC2, D7_pDC, D10_pDC, D14_pDC, D17_pDC, D21_pDC, D7_Mye, D10_Mye, D14_Mye, D17_Mye, D21_Mye, D7_Mast, D10_Mast, D14_Mast, D17_Mast, D21_Mast, D7_Lymph, D10_Lymph, D14_Lymph, D17_Lymph, D21_Lymph, D7_Ery, D10_Ery, D14_Ery, D17_Ery, D21_Ery, patient, fate_cluster, fate_umap)
+fate_selection <- fate_selection[rowSums(fate_selection[,1:35])>0,]
+fate_selection=fate_selection[order(fate_selection$fate_umap),]
+fate_selection=fate_selection[order(fate_selection$fate_cluster),]
+anno_row = select(fate_selection, patient, fate_cluster)
+anno_row$fate_cluster <- as.factor(anno_row$fate_cluster)
+mat_breaks <- seq(min(fate_selection[,1:35]), max(fate_selection[,1:35]), length.out = 5)
+fate_cluster_col <- c("1"= "#1F77B4FF", "2"= '#AEC7E8FF', "3"= '#FF7F0EFF', "4"= '#FFBB78FF', "5"= '#2CA02CFF', "6"= '#98DF8AFF', "7"= '#D62728FF', "8"= '#FF9896FF', "9"= '#9467BDFF', "10"= '#C5B0D5FF', "11"= '#8C564BFF', "12"= '#C49C94FF', "13"= '#E377C2FF', "14"= '#F7B6D2FF')
+Group_col = c("V"="#C2BC80",
+              "P"="#865640", "1"="#BD582C",
+              "U"="#E48312")
+
+pheatmap(data.matrix(fate_selection[,1:35]),
+          cluster_rows = F, cluster_cols = F, #cutree_rows = 19,
+          annotation_row = anno_row,
+          #scale = "row", clustering_distance_rows = "maximum",
+          color=inferno(length(mat_breaks) - 1),
+          annotation_colors = list(patient = Group_col,
+                                   fate_cluster= fate_cluster_col),
+          border_color = NA,
+          legend = T, annotation_legend = T, show_rownames = F, fontsize = 20)
+          filename = "heatmap_CMP_fate_cluster.pdf", width = 15 , height = 12)
+
+Idents(ST223.annotated_fate) <- 'fate_cluster'
+ST223.annotated_fate_Ery <- subset(ST223.annotated_fate, idents = c("9", "10", "11"))
+DefaultAssay(ST223.annotated_fate_Ery) <- 'RNA'
+ST223.annotated_fate_Ery <- ScaleData(ST223.annotated_fate_Ery)
+Idents(ST223.annotated_fate_Ery) <- 'fate_cluster'
+Ery.de.markers <- FindAllMarkers(ST223.annotated_fate_Ery, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+
+Ery.de.markers_10 <- Ery.de.markers %>%
+  group_by(cluster) %>%
+  slice_max(n = 30, order_by = avg_log2FC)
+
+jpeg("heatmap_HSC_clustering_rna.jpeg", width = 3000, height = 5000, res = 300)
+DoHeatmap(ST223.annotated_fate_Ery, features = Ery.de.markers_10$gene) + NoLegend()
+dev.off()
+saveRDS(ST223.annotated_fate, file = "/stornext/General/data/academic/lab_naik/Sara_Tomei/R_analysis/10X_Analysis/ST223/ST223.annotated_fate.rds")
+
+```
+
+#Biomass
+```{r}
+dt= biomass
+
+plate = unique(dt$plate)
+d <- data.frame()
+for (p in plate)
+{
+  #g="ProDC_Day9"
+  dtm = subset(dt, dt$plate==p)
+
+  cell.type.bias = unique(dt$barcodes)
+  b = data.frame()
+  for (c in cell.type.bias)
+  {
+    dtcm = subset(dtm, dtm$barcodes==c)
+    bc.percent = as.numeric(nrow(dtcm))/as.numeric(nrow(dtm))*100
+    cell.percent = sum(dtcm$biomass)/sum(dtm$biomass)*100
+    barcodes = c
+    plate = p
+    a = data.frame(plate = plate, barcodes = barcodes, bc.percent = bc.percent, cell.percent = cell.percent)
+    b = rbind(b, a)
+  }
+  d = rbind(d,b)
+}
+
+perc <- select(d, plate, barcodes, cell.percent)
+names(perc) <- c("plate", "barcodes", "percentage")
+count <- select(d, plate, barcodes, bc.percent)
+names(count) <- c("plate", "barcodes", "percentage")
+perc$plot <- "cell%"
+count$plot <- "bc%"
+
+d <- rbind(perc, count)
+d <- unite(d, plot, plot, plate, sep="_")
+
+PB_only= "#F0C162"
+plot_col <- c(only="#E35A55", common= "#EA9E5D")
+d$barcodes <- factor(d$barcodes, levels = c("common", "only"))
+
+pdf("stacked histogram_biomass_perc_plate.pdf", width = 5, height = 4)
+ggplot(d, aes(x=plot, y=percentage))+
+  geom_col(aes(fill = barcodes), col="black", width = 0.7) +
+  scale_fill_manual(values = plot_col)+
+  #scale_y_discrete(expand = c(0,0), limits = c(0,10,20,30,40,50,60,70,80,90,100))+
+  labs(title="%Barcode",x="",y="Percentage") +
+  THEME2
+dev.off()
+getwd()
+```
+
+
+
+
+
+
+
